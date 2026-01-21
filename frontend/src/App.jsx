@@ -62,7 +62,7 @@ function App() {
       const response = await axios.post('https://tweet-analysis-backend.onrender.com/fetch_tweets', {
         term: searchTerm,
         limit: 5
-      });
+      }, { timeout: 90000 });
 
       if (response.data.tweets && response.data.tweets.length > 0) {
         setFetchedTweets(response.data.tweets);
@@ -80,7 +80,7 @@ function App() {
   const analyzeSingleTweet = async (tweetText, index) => {
     setAnalyzingIndex(index);
     try {
-      const response = await axios.post('https://tweet-analysis-backend.onrender.com/analyze', { text: tweetText });
+      const response = await axios.post('https://tweet-analysis-backend.onrender.com/analyze', { text: tweetText }, { timeout: 90000 });
       const result = response.data;
       setLiveResults(prev => ({ ...prev, [index]: result }));
       return result;
@@ -135,7 +135,7 @@ function App() {
     // Generate Word Cloud
     try {
       const fullText = fetchedTweets.map(t => t.text).join(' ');
-      const wcRes = await axios.post('https://tweet-analysis-backend.onrender.com/generate_wordcloud', { text: fullText });
+      const wcRes = await axios.post('https://tweet-analysis-backend.onrender.com/generate_wordcloud', { text: fullText }, { timeout: 90000 });
       if (wcRes.data.image) {
         setWordCloudImage(wcRes.data.image);
       }
