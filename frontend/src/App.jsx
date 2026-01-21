@@ -38,7 +38,7 @@ function App() {
     setManualResult(null);
 
     try {
-      const response = await axios.post('https://tweet-analysis-backend.onrender.com/analyze', { text }, { timeout: 15000 }); // 15s timeout
+      const response = await axios.post('https://tweet-analysis-backend.onrender.com/analyze', { text }, { timeout: 90000 }); // 90s timeout for cold starts
       setManualResult(response.data);
     } catch (err) {
       console.error(err);
