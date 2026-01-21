@@ -1,0 +1,47 @@
+[
+  {
+    "text": "what are you doing brother?",
+    "raw": {
+      "label": "neutral",
+      "score": 0.7040485739707947
+    }
+  },
+  {
+    "text": "Bhai kya kar raha hai?",
+    "raw": {
+      "label": "neutral",
+      "score": 0.4421711266040802
+    },
+    "translated": {
+      "text": "Brother what are you doing?",
+      "label": "neutral",
+      "score": 0.773034393787384
+    }
+  },
+  {
+    "text": "mazza aa gaya bhai",
+    "raw": {
+      "label": "positive",
+      "score": 0.44710612297058105
+    },
+    "translated": {
+      "text": "brother, I have eaten the meat.",
+      "label": "neutral",
+      "score": 0.6065903306007385
+    }
+  },
+  {
+    "text": "bekaar movie thi",
+    "raw": {
+      "label": "positive",
+      "score": 0.36099690198898315
+    }
+  },
+  {
+    "text": "I am not happy with this",
+    "raw": {
+      "label": "negative",
+      "score": 0.9271826148033142
+    }
+  }
+]
