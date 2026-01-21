@@ -52,17 +52,9 @@ class TweetSearchRequest(BaseModel):
 
 @app.on_event("startup")
 async def load_model():
-    global sentiment_pipeline
-    try:
-        logger.info("Loading sentiment analysis model...")
-        # specific multilingual model for sentiment - switching to cardiffnlp which is better for tweets
-        model_name = "cardiffnlp/twitter-xlm-roberta-base-sentiment"
-        sentiment_pipeline = pipeline("sentiment-analysis", model=model_name, top_k=None)
-        logger.info("Model loaded successfully!")
-    except Exception as e:
-        logger.error(f"Failed to load model: {e}")
-        # Fallback or just let it be None and error out on request
-        sentiment_pipeline = None
+    logger.info("Loading lightweight sentiment model (TextBlob)...")
+    # No heavy loading needed for TextBlob
+    logger.info("Model loaded successfully!")
 
 def get_emoji(label):
     label = label.lower()
@@ -73,29 +65,12 @@ def get_emoji(label):
     else:
         return "😐"
 
-def map_label(label):
-    # Map cardiffnlp labels to our standard labels
-    # Verify the mapping via documentation or initial check, but usually:
-    # LABEL_0, negative; LABEL_1, neutral; LABEL_2, positive
-    # Some variants return 'negative', 'neutral', 'positive' directly.
-    # We will normalize to lowercase string.
-    
-    l = label.lower()
-    if l in ['label_0', 'negative']:
-        return 'negative'
-    elif l in ['label_1', 'neutral']:
-        return 'neutral'
-    elif l in ['label_2', 'positive']:
-        return 'positive'
-    return 'neutral' # fallback
-
 @app.post("/analyze", response_model=SentimentResponse)
 async def analyze_tweet(request: TweetRequest):
-    if sentiment_pipeline is None:
-        raise HTTPException(status_code=503, detail="Model is not loaded.")
-    
     try:
         import time
+        from textblob import TextBlob
+        
         start_time = time.time()
         logger.info(f"Received text for analysis: {request.text[:50]}...")
 
@@ -104,117 +79,67 @@ async def analyze_tweet(request: TweetRequest):
         language_name = "Unknown"
         translated_text = None
 
-        # Optimization: Check if we can skip translation for high-confidence inputs
-        t2 = time.time()
-        loop = asyncio.get_event_loop()
-        raw_results = await loop.run_in_executor(None, lambda: sentiment_pipeline(text_to_analyze))
-        
-        if not raw_results:
-             raise HTTPException(status_code=500, detail="No result from model.")
-
-        # Process Raw Results
-        sorted_raw = sorted(raw_results[0], key=lambda x: x['score'], reverse=True)
-        top_raw = sorted_raw[0]
-        
-        # Initialize result variables
-        final_result = top_raw
-        used_translation = False
-        top_trans = None
-        translated_text = None
-
-        # Opportunistic Language Detection (Always run this)
+        # Opportunistic Language Detection
         try:
             detected_lang = detect(text_to_analyze)
-            # Handle codes like 'zh-cn' by taking the first part 'zh'
             lookup_code = detected_lang.split('-')[0]
             lang_obj = pycountry.languages.get(alpha_2=lookup_code)
             if lang_obj: language_name = lang_obj.name
             else: language_name = detected_lang.upper()
         except: pass
 
-        # Logic: If raw confidence is > 0.95, skip translation to optimize latency.
-        if top_raw['score'] > 0.95:
-            logger.info(f"High confidence ({top_raw['score']:.2f}). Skipping translation.")
-        else:
-            # Fallback: Translate text to English for better accuracy on mixed/slang inputs
-            t0 = time.time()
-            try:
-                loop = asyncio.get_event_loop()
-                translated_text = await asyncio.wait_for(
+        # Translation Logic (TextBlob works best with English)
+        try:
+            # Simple check: if not english, translate
+            if detected_lang != 'en' and detected_lang != 'unknown':
+                 loop = asyncio.get_event_loop()
+                 translated_text = await asyncio.wait_for(
                     loop.run_in_executor(None, lambda: GoogleTranslator(source='auto', target='en').translate(text_to_analyze)),
-                    timeout=3.0
-                )
-                if not translated_text: translated_text = None
-                else: logger.info(f"Translation logic executed.")
+                    timeout=5.0
+                 )
+                 if translated_text:
+                     text_to_analyze = translated_text
+        except Exception as e:
+            logger.warning(f"Translation failed: {e}")
 
-            except asyncio.TimeoutError:
-                logger.warning("Translation timed out.")
-                translated_text = None
-            except Exception as e:
-                logger.warning(f"Translation failed: {e}")
-                translated_text = None
+        # Sentiment Analysis using TextBlob
+        blob = TextBlob(text_to_analyze)
+        polarity = blob.sentiment.polarity # -1.0 to 1.0
+        
+        # Mapping Polarity to Labels/Scores
+        # Polarity -1 to -0.1 => Negative
+        # Polarity -0.1 to 0.1 => Neutral
+        # Polarity 0.1 to 1 => Positive
+        
+        if polarity > 0.1:
+            label = "positive"
+            score = (polarity + 1) / 2 # Normalize to 0.5-1.0 roughly
+        elif polarity < -0.1:
+            label = "negative"
+            score = (abs(polarity) + 1) / 2 # Normalize magnitude
+        else:
+            label = "neutral"
+            score = 0.5 + abs(polarity) # Close to 0.5
             
-            # Run inference on translated text
-            trans_results = None
-            if translated_text and translated_text.strip().lower() != text_to_analyze.strip().lower():
-                 trans_results = await loop.run_in_executor(None, lambda: sentiment_pipeline(translated_text))
+        # Ensure score is within 0-1
+        score = min(max(score, 0.0), 1.0)
 
-            # Compare Raw vs Translated Confidence
-            if trans_results:
-                sorted_trans = sorted(trans_results[0], key=lambda x: x['score'], reverse=True)
-                top_trans = sorted_trans[0]
-                
-                if top_trans['score'] > top_raw['score']:
-                    final_result = top_trans
-                    used_translation = True
-                    sorted_results = sorted_trans
-                else:
-                    sorted_results = sorted_raw
-            else:
-                sorted_results = sorted_raw
-        
-        if 'sorted_results' not in locals():
-            sorted_results = sorted_raw
-
-        raw_label = final_result['label']
-        label = map_label(raw_label) # Normalize label
-        score = final_result['score']
-        
         total_time = time.time() - start_time
         logger.info(f"Total analysis time: {total_time:.4f}s")
-
-        # Prepare details with normalized labels for charts
-        normalized_details = []
-        for res in sorted_results:
-            normalized_details.append({
-                "label": map_label(res['label']),
-                "score": res['score']
-            })
-
-        # Decision comparison details
-        comparison_details = {
-            "raw": {
-                "label": map_label(top_raw['label']),
-                "score": top_raw['score']
-            }
-        }
-        
-        if top_trans:
-            comparison_details["translated"] = {
-                "label": map_label(top_trans['label']),
-                "score": top_trans['score'],
-                "text": translated_text
-            }
 
         return SentimentResponse(
             label=label,
             score=score,
             emoji=get_emoji(label),
-            details=normalized_details,
+            details=[
+                {"label": "positive", "score": (polarity + 1) / 2},
+                {"label": "negative", "score": (1 - polarity) / 2},
+                {"label": "neutral", "score": 1.0 - abs(polarity)}
+            ],
             language=detected_lang,
             language_name=language_name,
             translation=translated_text,
-            comparison_details=comparison_details
+            comparison_details={"engine": "TextBlob (Lightweight)"} 
         )
     except Exception as e:
         import traceback

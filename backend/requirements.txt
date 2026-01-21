@@ -1,14 +1,12 @@
 fastapi
 uvicorn
-transformers
-torch
 scipy
 ntscraper
 langdetect
 deep-translator
 pycountry
 asyncio
-sentencepiece
-protobuf==3.20.0
 wordcloud
 python-multipart
+textblob
+vaderSentiment
