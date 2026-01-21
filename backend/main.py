@@ -1,6 +1,6 @@
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
-from transformers import pipeline
+
 import logging
 from fastapi.middleware.cors import CORSMiddleware
 
