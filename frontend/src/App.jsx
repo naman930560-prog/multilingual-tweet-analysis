@@ -38,7 +38,7 @@ function App() {
     setManualResult(null);
 
     try {
-      const response = await axios.post('https://great-queens-follow.loca.lt/analyze', { text }, { timeout: 15000 }); // 15s timeout
+      const response = await axios.post('https://tweet-analysis-backend.onrender.com/analyze', { text }, { timeout: 15000 }); // 15s timeout
       setManualResult(response.data);
     } catch (err) {
       console.error(err);
@@ -59,7 +59,7 @@ function App() {
     setAggregateData(null);
 
     try {
-      const response = await axios.post('https://great-queens-follow.loca.lt/fetch_tweets', {
+      const response = await axios.post('https://tweet-analysis-backend.onrender.com/fetch_tweets', {
         term: searchTerm,
         limit: 5
       });
@@ -80,7 +80,7 @@ function App() {
   const analyzeSingleTweet = async (tweetText, index) => {
     setAnalyzingIndex(index);
     try {
-      const response = await axios.post('https://great-queens-follow.loca.lt/analyze', { text: tweetText });
+      const response = await axios.post('https://tweet-analysis-backend.onrender.com/analyze', { text: tweetText });
       const result = response.data;
       setLiveResults(prev => ({ ...prev, [index]: result }));
       return result;
@@ -98,7 +98,7 @@ function App() {
 
     const promises = fetchedTweets.map((tweet, idx) => {
       if (liveResults[idx]) return Promise.resolve(liveResults[idx]);
-      return axios.post('https://great-queens-follow.loca.lt/analyze', { text: tweet.text })
+      return axios.post('https://tweet-analysis-backend.onrender.com/analyze', { text: tweet.text })
         .then(res => {
           const resData = res.data;
           setLiveResults(prev => ({ ...prev, [idx]: resData }));
@@ -135,7 +135,7 @@ function App() {
     // Generate Word Cloud
     try {
       const fullText = fetchedTweets.map(t => t.text).join(' ');
-      const wcRes = await axios.post('https://great-queens-follow.loca.lt/generate_wordcloud', { text: fullText });
+      const wcRes = await axios.post('https://tweet-analysis-backend.onrender.com/generate_wordcloud', { text: fullText });
       if (wcRes.data.image) {
         setWordCloudImage(wcRes.data.image);
       }
