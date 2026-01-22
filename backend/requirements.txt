@@ -10,3 +10,6 @@ wordcloud
 python-multipart
 textblob
 vaderSentiment
+tweepy
+python-dotenv
+requests
