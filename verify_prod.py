@@ -43,9 +43,9 @@ def test_fetch_tweets():
             print("✅ Fetch Tweets check passed")
             data = resp.json()
             if data.get("is_mock"):
-                print("⚠️  Warning: Returned Mock Data (Twitter Token likely missing)")
+                print("⚠️  Warning: Returned Mock Data (Nitter likely failed, used fallback)")
             else:
-                print("🎉 Returned Live Twitter Data")
+                print("🎉 Returned Live Twitter Data (via Nitter or API)")
         else:
             print("❌ Fetch Tweets check failed")
             print(f"Error Response: {resp.text}")

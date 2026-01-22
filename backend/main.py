@@ -208,8 +208,34 @@ async def fetch_tweets(request: TweetSearchRequest):
 
     # If no token, return mock data immediately
     if not bearer_token:
-        logger.warning("No Twitter Token found. Using Mock Data.")
-        return {"tweets": get_mock_tweets(request.term), "is_mock": True}
+        logger.warning("No Twitter Token found. Attempting to use Nitter Scraper...")
+        try:
+            scraper = Nitter(log_level=1, skip_instance_check=False)
+            tweets_data = scraper.get_tweets(request.term, mode='term', number=request.limit)
+            
+            if tweets_data and 'tweets' in tweets_data and len(tweets_data['tweets']) > 0:
+                cleaned_tweets = []
+                for t in tweets_data['tweets']:
+                    cleaned_tweets.append({
+                        "text": t['text'],
+                        "user": t['user']['username'],
+                        "name": t['user']['name'],
+                        "avatar": t['user']['avatar'],
+                        "link": t['link'],
+                        "date": t['date'],
+                        "stats": {
+                            "likes": t['stats']['likes'],
+                            "retweets": t['stats']['retweets'],
+                            "comments": t['stats']['comments']
+                        }
+                    })
+                return {"tweets": cleaned_tweets, "is_mock": False}
+            else:
+                logger.warning("Nitter found no tweets.")
+                return {"tweets": get_mock_tweets(request.term), "is_mock": True}
+        except Exception as e:
+            logger.error(f"Nitter Scraper Error: {e}")
+            return {"tweets": get_mock_tweets(request.term), "is_mock": True}
 
     try:
         client = tweepy.Client(bearer_token=bearer_token)
