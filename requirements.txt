@@ -1,0 +1,15 @@
+fastapi
+uvicorn
+scipy
+ntscraper
+langdetect
+deep-translator
+pycountry
+asyncio
+wordcloud
+python-multipart
+textblob
+vaderSentiment
+tweepy
+python-dotenv
+requests
