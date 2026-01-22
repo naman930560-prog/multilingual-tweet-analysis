@@ -62,7 +62,7 @@ const AnalysisCharts = ({ currentDetails, comparisonDetails, titlePie = "Confide
                     )}
                 </AnimatePresence>
 
-                <div className="w-full h-64">
+                <div className="w-full" style={{ height: 300 }}>
                     <ResponsiveContainer width="100%" height="100%">
                         <PieChart>
                             <Pie
@@ -123,7 +123,7 @@ const AnalysisCharts = ({ currentDetails, comparisonDetails, titlePie = "Confide
                     )}
                 </AnimatePresence>
 
-                <div className="w-full h-64">
+                <div className="w-full" style={{ height: 300 }}>
                     <ResponsiveContainer width="100%" height="100%">
                         <BarChart data={chartData} margin={{ top: 20, right: 10, left: -20, bottom: 0 }}>
                             <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
